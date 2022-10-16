@@ -1,4 +1,4 @@
-function [cur_object] = nxt_object_finder(cur_object, im)
+function [n_id] = nxt_object_finder(cur_object, im)
 % Binarisation
 bin_threshold = 0.09;
 bin_im = im2bw(im, bin_threshold);
@@ -11,38 +11,33 @@ props = regionprops(con_com);
 % Getting yellow pixels
 yellow = im(:, :, 1) > 210 & im(:, :, 2) > 210 & im(:, :, 3) < 100;
 [x, y] = find(yellow> 0);
-% K-means to get centroid of the yellow pixel
 [~,C] = kmeans([y x],length(arrow_ind));
 Cent = round(C);
-% To get the nearest point in order to arange the yellow pixel centroid
-% according to centroid of the arrow
+b = [];
 for i=1:length(props)
+    b=[b;bbox2points(props(i).BoundingBox)];
     for j=1:length(Cent)
         d(j)=norm(props(i).Centroid-Cent(j,:));
     end
     [~, idx] = min(d);
     Cent_Cor(i,:)=Cent(idx,:);
 end
-% Calculating the direction vector  and the next point
-p = Cent_Cor(cur_object,:);
-dir_vec = Cent_Cor(cur_object,:)-props(cur_object).Centroid;
-p = p + 2*dir_vec;
-h = 0;
-% To check if its in the bouding box of the next component
-while(h==0)
-    for i = 1:length(props)
-        % Decision Rule for the bounding box
-        b = props(i).BoundingBox;
-        if p(1)>b(1) && p(1)<(b(1)+b(3))
-            if p(2)>b(2)&& p(2)<(b(2)+b(4))
-                h= 1;
+% while the current object is an arrow, continue 
+    p = Cent_Cor(cur_object,:);
+    dir_vec = Cent_Cor(cur_object,:)-props(cur_object).Centroid;
+    p = p + 3*dir_vec; 
+    p_x = p(1);
+    p_y = p(2);
+    for n=1:length(props)
+
+        %Obtain the bounding box
+        bounding_box=props(n).BoundingBox;
+
+        if p_x>bounding_box(1) && p_x<(bounding_box(1)+bounding_box(3))
+            if p_y>bounding_box(2)&& p_y<(bounding_box(2)+bounding_box(4))
+                n_id=n;
+                return;
             end
         end
-        if h==1
-            break
-        end
     end
-    p= p + 0.5*dir_vec;
-end
-cur_object=i;
-end
+    n_id=0;
